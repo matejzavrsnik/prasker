@@ -256,12 +256,12 @@ def main():
 	parser.add_argument("-v", "--verbose", type=int, default=1, help="increase output verbosity (default: 1)")
 	parser.add_argument("-s", "--wordstore", help="where should words that are not in dictionary be stored")
 	parser.add_argument("-i", "--ignoredic", help="list of words, that shouldn't go on not-in-dictionary list, even when not found in dictionary")
-	# todo: add links deep option (first refactor url store class to implement queue
+	# todo: add links deep option
 	parser.add_argument("-w", "--wait", type=int, default=5, help="timeout between subsequent url requests (default: 5)")
 	parser.add_argument("-b", "--maxurlbuffer", type=int, default=10000, help="max size of unvisited url buffer (default: 10000)")
 	args = parser.parse_args()
 	# typical use
-	# prasker.py -url [http://www.reddit.com | urllist.txt]
+	# prasker.py --url [http://www.reddit.com | urllist.txt] --output output.txt
 	# prasker.py --url urls.txt --output output.txt --trace trace.txt --dictionary slo.dic --ignoredic eng.dic --wordstore newwords.txt --wait 5 --maxurlbuffer 20000 --verbose 1
 		
 	# initialize dictionaries
@@ -294,7 +294,7 @@ def main():
 	# go
 	# pretend you're normal browser. some sites block scripts. wikipedia, for instance
 	agent_headers = { "User-Agent" : "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11" }
-	megabyte = 1024*1024
+	megabyte = 1024*1024*10
 	while( not urls.empty() ):
 		url = urls.next()
 		verbose_print (args.verbose,1,args.trace,"In {0}s will open url: {1}".format(args.wait,url))
@@ -316,7 +316,7 @@ def main():
 				if os.name == "posix":
 					signal.signal(signal.SIGALRM, timeout_handler)
 					signal.alarm(60)   # Ten seconds
-				# parse html document, read at most 1MB of html data. More than that is likely an error
+				# parse html document, read at most 10MB of html data. More than that is likely an error
 				soup = BeautifulSoup(page.read(megabyte))
 				if os.name == "posix":
 					signal.alarm(0)
