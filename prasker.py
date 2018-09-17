@@ -45,7 +45,13 @@ class class_trace:
 		self.verbose_level = verbose
 	
 def timeout_handler(signum, frame):
-    raise Exception("Timeout!")
+	raise Exception("Timeout!")
+
+def starts_with_any_of(string, prefixes):
+	for prefix in prefixes:
+		if string.startswith(prefix):
+			return True
+	return False
 	
 class class_dictionary(class_trace):
 	words = set() # collection of dictionary words
@@ -106,6 +112,7 @@ class class_dictionary(class_trace):
 class class_urlstorage(class_trace):
 	visited = set()
 	unvisited = deque() # using queue: first added links to be processed first 
+	allowed_domains = set()
 	# todo: add another limit to adding url: links deep level
 	maxurlbuffer = 10000
 	trace_file = ""
@@ -117,8 +124,11 @@ class class_urlstorage(class_trace):
 		url = self.fix_url (url,from_url)
 		if (len(url) > 0) and (url not in self.visited) and (url not in self.unvisited):
 			#possibility: and not on ignore list: youtube, twitter (blacklist)
-			#possibility: only add if from specified domain, ignore the rest (whitelist)
-			if not len(self.unvisited) > self.maxurlbuffer: # max size of url buffer, since every page has more then 1 link on average, this set would otherwise only grow
+			
+			# max size of url buffer, since every page has more then 1 link on average, this set would otherwise only grow
+			# only add if from specified domain, ignore the rest (whitelist)
+			# todo: how do I break a line in two in python?
+			if (not len(self.unvisited) > self.maxurlbuffer) and (len(self.allowed_domains) == 0 or starts_with_any_of(url, self.allowed_domains)): 
 				self.unvisited.append(url)
 				return True
 			else:
@@ -252,6 +262,7 @@ def main():
 	parser.add_argument("-u", "--url", required=True, help="Single starting url or a text file with starting collection of urls.")
 	parser.add_argument("-o", "--output", required=True, help="Filename where you would like to get scraped text.")
 	parser.add_argument("-t", "--trace", help="Filename where you would like to get trace information.")
+	parser.add_argument("-a", "--domains", help="A list of comma separated domains allowed for scraping. If empy, no restrictions.")
 	parser.add_argument("-d", "--dictionary", help="Dictionary file containing words of the desired language.")
 	parser.add_argument("-v", "--verbose", type=int, default=1, help="increase output verbosity (default: 1)")
 	parser.add_argument("-s", "--wordstore", help="where should words that are not in dictionary be stored")
@@ -260,9 +271,11 @@ def main():
 	parser.add_argument("-w", "--wait", type=int, default=5, help="timeout between subsequent url requests (default: 5)")
 	parser.add_argument("-b", "--maxurlbuffer", type=int, default=10000, help="max size of unvisited url buffer (default: 10000)")
 	args = parser.parse_args()
-	# typical use
+	
+	# typical uses
 	# prasker.py --url [http://www.reddit.com | urllist.txt] --output output.txt
 	# prasker.py --url urls.txt --output output.txt --trace trace.txt --dictionary slo.dic --ignoredic eng.dic --wordstore newwords.txt --wait 5 --maxurlbuffer 20000 --verbose 1
+	# prasker.py --url https://www.bbc.co.uk/ --output bbc_news --trace trace_news --domains https://www.bbc.co.uk/news,http://www.bbc.co.uk/news
 		
 	# initialize dictionaries
 	dictionary = class_dictionary(args.dictionary,args.wordstore,args.ignoredic)
@@ -272,6 +285,7 @@ def main():
 	urls = class_urlstorage()
 	urls.set_trace(args.trace,args.verbose)
 	urls.maxurlbuffer = args.maxurlbuffer
+	urls.allowed_domains = args.domains.split(",")
 	if not args.url is None and os.path.isfile(args.url):
 		with open(args.url, "r") as f:
 			for urlline in f:
